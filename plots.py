@@ -2,15 +2,22 @@
 # Probability Toolkit — Plots
 
 Diagram helpers for discrete and continuous random variables.
-Uses matplotlib and scipy — no other dependencies.
 
 | Function | What it draws |
 |---|---|
-| `plot_pmf(values, probs, title)` | PMF stem plot for a discrete RV |
-| `plot_pdf(dist, x_min, x_max, title)` | PDF curve for a continuous RV |
-| `plot_cdf_discrete(values, probs, title)` | Step-function CDF for a discrete RV |
-| `plot_cdf_continuous(dist, x_min, x_max, title)` | Smooth CDF curve for a continuous RV |
-| `plot_normal_shaded(mean, std, shade_from, shade_to, title)` | Normal curve with shaded probability region |
+| `plot_pmf(values, probs)` | PMF stem plot for a discrete RV |
+| `plot_cdf_discrete(values, probs)` | Step-function CDF for a discrete RV |
+| `plot_pdf(dist, x_min, x_max)` | PDF curve for a continuous RV |
+| `plot_cdf_continuous(dist, x_min, x_max)` | Smooth CDF curve for a continuous RV |
+| `plot_normal_shaded(mu, sigma2, shade_from, shade_to)` | Normal curve with shaded probability region |
+
+**Building a `dist` object** (needed for `plot_pdf` and `plot_cdf_continuous`):
+
+```python
+stats.norm(loc=mu, scale=std)        # Normal  — scale is std, NOT variance
+stats.expon(scale=1/lam)             # Exponential — scale is 1/λ
+stats.uniform(loc=a, scale=b-a)      # Uniform on [a, b]
+```
 """
 
 import matplotlib.pyplot as plt
@@ -20,20 +27,24 @@ from scipy import stats
 
 # =============================================================================
 # 1. PMF PLOT (discrete random variable)
-# Inputs:
-#   values  — list of possible values X can take, e.g. [2, 4, 5, 8, 10]
-#   probs   — corresponding probabilities,        e.g. [0.1, 0.2, 0.2, 0.3, 0.2]
-#   title   — string label for the plot
 # =============================================================================
+
 def plot_pmf(values, probs, title="PMF of X"):
     """
-    Stem plot of the **PMF** for a discrete random variable.
+    Stem plot of P(X = x) for a discrete random variable.
 
-    - `values` — possible values X can take, e.g. `[2, 4, 5, 8, 10]`
-    - `probs`  — corresponding probabilities, e.g. `[0.1, 0.2, 0.2, 0.3, 0.2]`
+    **Parameters**
+
+    - `values` *(list of float)* — all possible values X can take, e.g. `[2, 4, 5, 8, 10]`.
+    - `probs` *(list of float)* — corresponding probabilities, e.g. `[0.1, 0.2, 0.2, 0.3, 0.2]`.
+      Must sum to 1 and match `values` in length.
+    - `title` *(str, optional)* — plot title; default `"PMF of X"`.
+
+    **Examples**
 
     ```python
-    plot_pmf([2, 4, 5, 8, 10], [0.1, 0.2, 0.2, 0.3, 0.2], title="PMF of X")
+    plot_pmf([2, 4, 5, 8, 10], [0.1, 0.2, 0.2, 0.3, 0.2])
+    plot_pmf([0, 1, 2, 3], [0.1, 0.4, 0.4, 0.1], title="PMF of Y")
     ```
     """
     plt.figure()
@@ -48,35 +59,28 @@ def plot_pmf(values, probs, title="PMF of X"):
 
 # =============================================================================
 # 2. PDF PLOT (continuous random variable)
-# Inputs:
-#   dist    — a scipy.stats distribution object, e.g. stats.expon(scale=2)
-#   x_min   — left bound of x-axis
-#   x_max   — right bound of x-axis
-#   title   — string label for the plot
-# Common distributions:
-#   stats.norm(loc=mean, scale=std)
-#   stats.expon(scale=1/lambda)
-#   stats.uniform(loc=a, scale=b-a)
 # =============================================================================
+
 def plot_pdf(dist, x_min, x_max, title="PDF of X"):
     """
-    Smooth **PDF** curve for a continuous random variable.
+    PDF curve f(x) for a continuous random variable.
 
-    - `dist` — a frozen `scipy.stats` distribution
-    - `x_min`, `x_max` — x-axis bounds
+    **Parameters**
 
-    Common distributions:
+    - `dist` *(scipy.stats frozen distribution)* — the distribution to plot.
+      See module docstring for how to build one.
+    - `x_min` *(float)* — left edge of the x-axis.
+    - `x_max` *(float)* — right edge of the x-axis.
+    - `title` *(str, optional)* — plot title; default `"PDF of X"`.
+
+    > **Note:** For `stats.norm`, `scale` is the standard deviation σ, not the variance σ².
+    > For `stats.expon`, `scale` is 1/λ, not λ itself.
+
+    **Examples**
 
     ```python
-    stats.norm(loc=mean, scale=std)
-    stats.expon(scale=1/lam)        # note: scale = 1/lambda
-    stats.uniform(loc=a, scale=b-a)
-    ```
-
-    Example:
-
-    ```python
-    plot_pdf(stats.expon(scale=2), x_min=0, x_max=10, title="Exponential PDF")
+    plot_pdf(stats.expon(scale=2), 0, 10)            # Exponential(λ = 0.5)
+    plot_pdf(stats.norm(loc=5, scale=2), -1, 11)     # Normal(μ = 5, σ = 2)
     ```
     """
     x = np.linspace(x_min, x_max, 500)
@@ -94,41 +98,40 @@ def plot_pdf(dist, x_min, x_max, title="PDF of X"):
 
 # =============================================================================
 # 3. CDF PLOT — DISCRETE (step function)
-# Inputs:
-#   values  — list of possible values X can take, e.g. [2, 4, 5, 8, 10]
-#   probs   — corresponding probabilities,        e.g. [0.1, 0.2, 0.2, 0.3, 0.2]
-#   title   — string label for the plot
 # =============================================================================
+
 def plot_cdf_discrete(values, probs, title="CDF of X (Discrete)"):
     """
-    Step-function **CDF** for a discrete random variable.
+    Step-function CDF F(x) = P(X ≤ x) for a discrete random variable.
 
-    Draws open circles at jump boundaries and filled circles at landed values
-    (right-continuous convention: F(x) = P(X ≤ x)).
+    Open circles mark the left edge of each jump (value not yet included);
+    filled circles mark the landed value (value now included).
 
-    - `values` — possible values X can take, e.g. `[2, 4, 5, 8, 10]`
-    - `probs`  — corresponding probabilities, e.g. `[0.1, 0.2, 0.2, 0.3, 0.2]`
+    **Parameters**
+
+    - `values` *(list of float)* — all possible values X can take, e.g. `[2, 4, 5, 8, 10]`.
+    - `probs` *(list of float)* — corresponding probabilities, e.g. `[0.1, 0.2, 0.2, 0.3, 0.2]`.
+      Must sum to 1 and match `values` in length.
+    - `title` *(str, optional)* — plot title; default `"CDF of X (Discrete)"`.
+
+    **Examples**
 
     ```python
     plot_cdf_discrete([2, 4, 5, 8, 10], [0.1, 0.2, 0.2, 0.3, 0.2])
     ```
     """
-    # Sort by value just in case
     sorted_pairs = sorted(zip(values, probs))
     vals, ps = zip(*sorted_pairs)
 
     cum_probs = np.cumsum(ps)
 
-    # Add a point before the first value so the step starts at 0
     x_steps = [vals[0] - 1] + list(vals)
     y_steps = [0] + list(cum_probs)
 
     plt.figure()
     plt.step(x_steps, y_steps, where='post', color='C0', linewidth=2)
-    # Open circles at jumps (left-continuous reminder)
     plt.plot(vals, [0] + list(cum_probs[:-1]), 'o',
              markerfacecolor='white', markeredgecolor='C0', zorder=5)
-    # Filled circles at landed values
     plt.plot(vals, cum_probs, 'o', color='C0', zorder=5)
     plt.xlabel("x")
     plt.ylabel("F(x) = P(X ≤ x)")
@@ -140,21 +143,28 @@ def plot_cdf_discrete(values, probs, title="CDF of X (Discrete)"):
 
 # =============================================================================
 # 4. CDF PLOT — CONTINUOUS (smooth curve)
-# Inputs:
-#   dist    — a scipy.stats distribution object, e.g. stats.norm(loc=0, scale=1)
-#   x_min   — left bound of x-axis
-#   x_max   — right bound of x-axis
-#   title   — string label for the plot
 # =============================================================================
+
 def plot_cdf_continuous(dist, x_min, x_max, title="CDF of X (Continuous)"):
     """
-    Smooth **CDF** curve for a continuous random variable.
+    Smooth CDF curve F(x) = P(X ≤ x) for a continuous random variable.
 
-    - `dist` — a frozen `scipy.stats` distribution
-    - `x_min`, `x_max` — x-axis bounds
+    **Parameters**
+
+    - `dist` *(scipy.stats frozen distribution)* — the distribution to plot.
+      See module docstring for how to build one.
+    - `x_min` *(float)* — left edge of the x-axis.
+    - `x_max` *(float)* — right edge of the x-axis.
+    - `title` *(str, optional)* — plot title; default `"CDF of X (Continuous)"`.
+
+    > **Note:** For `stats.norm`, `scale` is the standard deviation σ, not the variance σ².
+    > For `stats.expon`, `scale` is 1/λ, not λ itself.
+
+    **Examples**
 
     ```python
-    plot_cdf_continuous(stats.norm(loc=0, scale=1), x_min=-4, x_max=4)
+    plot_cdf_continuous(stats.norm(loc=0, scale=1), -4, 4)   # Standard normal
+    plot_cdf_continuous(stats.expon(scale=2), 0, 10)         # Exponential(λ = 0.5)
     ```
     """
     x = np.linspace(x_min, x_max, 500)
@@ -172,40 +182,39 @@ def plot_cdf_continuous(dist, x_min, x_max, title="CDF of X (Continuous)"):
 
 # =============================================================================
 # 5. NORMAL CURVE WITH SHADED REGION
-# Use for: P(a < X < b), P(X > a), P(X < b)
-# Inputs:
-#   mean    — mean of the normal distribution
-#   std     — standard deviation
-#   shade_from — left boundary of shaded region (use -np.inf for "less than" tails)
-#   shade_to   — right boundary of shaded region (use  np.inf for "greater than" tails)
-#   title   — string label for the plot
-# Example: P(1 < X < 3) for X ~ N(2, 1)
-#   plot_normal_shaded(mean=2, std=1, shade_from=1, shade_to=3)
 # =============================================================================
-def plot_normal_shaded(mean, std, shade_from, shade_to, title="Normal Distribution"):
+
+def plot_normal_shaded(mu, sigma2, shade_from, shade_to, title="Normal Distribution"):
     """
-    Normal curve with a **shaded probability region**.
+    Normal curve with a shaded probability region for X ~ N(μ, σ²).
 
-    Use for P(a < X < b), P(X > a), or P(X < b).
-    Use `-np.inf` / `np.inf` for one-sided tails.
+    Useful for visualising P(a < X < b), P(X > a), or P(X < b).
+    The shaded area label shows the exact probability.
 
-    - `mean`, `std` — distribution parameters (**std**, not variance)
-    - `shade_from`, `shade_to` — boundaries of the shaded region
+    **Parameters**
+
+    - `mu` *(float)* — mean μ.
+    - `sigma2` *(float)* — variance σ² — **NOT standard deviation**. Pass `36` to get σ = 6.
+    - `shade_from` *(float)* — left boundary of the shaded region. Use `-np.inf` for P(X < b).
+    - `shade_to` *(float)* — right boundary of the shaded region. Use `np.inf` for P(X > a).
+    - `title` *(str, optional)* — plot title; default `"Normal Distribution"`.
+
+    **Examples**
 
     ```python
-    plot_normal_shaded(mean=2, std=1, shade_from=1, shade_to=3)   # P(1 < X < 3)
-    plot_normal_shaded(mean=0, std=1, shade_from=1.96, shade_to=np.inf)  # P(X > 1.96)
+    plot_normal_shaded(2, 1, 1, 3)                    # P(1 < X < 3),  X ~ N(2, 1)
+    plot_normal_shaded(0, 1, 1.96, np.inf)            # P(X > 1.96),   X ~ N(0, 1)
+    plot_normal_shaded(10, 36, -np.inf, 5)            # P(X < 5),      X ~ N(10, 36)
     ```
     """
-    dist = stats.norm(loc=mean, scale=std)
+    std = np.sqrt(sigma2)
+    dist = stats.norm(loc=mu, scale=std)
 
-    # Plot range: mean ± 4 std
-    x_min = mean - 4 * std
-    x_max = mean + 4 * std
+    x_min = mu - 4 * std
+    x_max = mu + 4 * std
     x = np.linspace(x_min, x_max, 500)
     y = dist.pdf(x)
 
-    # Clip shade boundaries to plot range
     shade_from_clipped = max(shade_from, x_min)
     shade_to_clipped   = min(shade_to,   x_max)
 
@@ -230,7 +239,6 @@ def plot_normal_shaded(mean, std, shade_from, shade_to, title="Normal Distributi
 # EXAMPLE USAGE
 # =============================================================================
 if __name__ == "__main__":
-    # Problem 4.5 from class
     plot_pmf(
         values=[2, 4, 5, 8, 10],
         probs=[0.1, 0.2, 0.2, 0.3, 0.2],
@@ -243,11 +251,9 @@ if __name__ == "__main__":
         title="CDF of X (Problem 4.5)"
     )
 
-    # Standard normal with shading: P(-1 < X < 1)
-    plot_normal_shaded(mean=0, std=1, shade_from=-1, shade_to=1,
+    plot_normal_shaded(mu=0, sigma2=1, shade_from=-1, shade_to=1,
                        title="Standard Normal: P(-1 < X < 1)")
 
-    # Exponential distribution PDF and CDF
     exp_dist = stats.expon(scale=2)   # scale = 1/lambda, so lambda = 0.5
     plot_pdf(exp_dist, x_min=0, x_max=10, title="Exponential PDF (λ = 0.5)")
     plot_cdf_continuous(exp_dist, x_min=0, x_max=10, title="Exponential CDF (λ = 0.5)")
